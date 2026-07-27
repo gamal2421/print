@@ -1,0 +1,28 @@
+{
+    "name": "zaha-print-service",
+    "version": "1.0.0",
+    "description": "ZAHA Local Print Service",
+    "main": "server.js",
+    "bin": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node --watch server.js"
+    },
+    "license": "MIT",
+    "dependencies": {
+        "axios": "^1.18.1",
+        "cors": "^2.8.6",
+        "express": "^4.22.2",
+        "fs-extra": "^11.3.6",
+        "pdf-to-printer": "^2.0.6"
+    },
+    "pkg": {
+        "targets": [
+            "node18-win-x64"
+        ],
+        "outputPath": "build"
+    },
+    "devDependencies": {
+        "pkg": "^5.8.1"
+    }
+}
