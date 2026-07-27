@@ -3,6 +3,8 @@
     const cors = require("cors");
     const fs = require("fs");
     const path = require("path");
+    const { execFile } = require("child_process");
+    const { promisify } = require("util");
     const {
         print,
         getPrinters,
@@ -14,10 +16,15 @@
     app.use(express.json());
 
     const PORT = 9999;
+    const SCAN_UPLOAD_BASE_URL =
+        "http://192.168.155.57:8080/ords/himu/scanner/";
+    const execFileAsync = promisify(execFile);
 
     const REPORT_PRINTERS = {
         "2": "Microsoft Print to PDF"
     };
+
+    let scanInProgress = false;
 
 
     // ================================
@@ -28,6 +35,123 @@
 
     if (!fs.existsSync(TEMP_FOLDER)) {
         fs.mkdirSync(TEMP_FOLDER, { recursive: true });
+    }
+
+
+    // ================================
+    // SCAN TO PNG
+    // ================================
+
+    const WIA_SCAN_SCRIPT = `
+        $ErrorActionPreference = "Stop"
+        $outputPath = [Environment]::GetEnvironmentVariable("SCAN_OUTPUT_PATH")
+
+        if ([string]::IsNullOrWhiteSpace($outputPath)) {
+            throw "SCAN_OUTPUT_PATH is required."
+        }
+
+        $pngFormat = "{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}"
+        $dialog = New-Object -ComObject WIA.CommonDialog
+        $image = $dialog.ShowAcquireImage(1, 1, 0, $pngFormat, $true, $true, $true)
+
+        if ($null -eq $image) {
+            throw "Scan canceled."
+        }
+
+        $image.SaveFile($outputPath)
+    `;
+
+
+    async function scanDocumentToPng(filePath) {
+
+        await execFileAsync(
+            "powershell.exe",
+            [
+                "-NoProfile",
+                "-STA",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                WIA_SCAN_SCRIPT
+            ],
+            {
+                env: {
+                    ...process.env,
+                    SCAN_OUTPUT_PATH: filePath
+                },
+                maxBuffer: 1024 * 1024
+            }
+        );
+
+        if (!fs.existsSync(filePath)) {
+            throw new Error("Scanner did not create an image file.");
+        }
+
+    }
+
+
+    async function uploadScannedImage(
+        filePath,
+        targetUrl,
+        identifierKey,
+        identifierValue
+    ) {
+
+        const imageBuffer =
+            await fs.promises.readFile(filePath);
+
+        const payload = {
+            image:
+                "data:image/png;base64," +
+                imageBuffer.toString("base64"),
+            [identifierKey]: identifierValue
+        };
+
+        return axios.post(targetUrl, payload, {
+            headers: {
+                "Content-Type": "application/json"
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+            timeout: 60000,
+            validateStatus: () => true
+        });
+
+    }
+
+
+    function buildScanInsertUrl(server, identifierKey) {
+
+        if (typeof server !== "string" || !server.trim()) {
+            throw new Error("server must be a non-empty URL.");
+        }
+
+        const serverUrl = new URL(server);
+
+        if (
+            serverUrl.protocol !== "http:" &&
+            serverUrl.protocol !== "https:"
+        ) {
+            throw new Error("server must use http or https.");
+        }
+
+        serverUrl.search = "";
+        serverUrl.hash = "";
+
+        if (!serverUrl.pathname.endsWith("/")) {
+            serverUrl.pathname += "/";
+        }
+
+        const scannerType =
+            identifierKey
+                .replace(/_id$/i, "")
+                .replace(/_/g, "");
+
+        return new URL(
+            scannerType,
+            serverUrl
+        ).toString();
+
     }
 
 
@@ -481,6 +605,170 @@
             res
                 .status(500)
                 .send("Printing failed.");
+
+        }
+
+    });
+
+
+    // ================================
+    // SCAN AND INSERT
+    // ================================
+
+    app.post("/scan_and_insert", async (req, res) => {
+
+        let filePath;
+        const identifierFields =
+            req.body &&
+            typeof req.body === "object" &&
+            !Array.isArray(req.body)
+                ? Object.keys(req.body).filter(
+                    (field) =>
+                        /^[a-z][a-z0-9_]*_id$/i.test(field) &&
+                        req.body[field] !== undefined &&
+                        req.body[field] !== null
+                )
+                : [];
+        if (identifierFields.length !== 1) {
+            return res
+                .status(400)
+                .json({
+                    error:
+                        "Provide exactly one positive <type>_id field."
+                });
+        }
+
+        const identifierKey = identifierFields[0];
+        const identifierValue = Number(
+            req.body[identifierKey]
+        );
+        const scanServer =
+            req.body.server === undefined
+                ? SCAN_UPLOAD_BASE_URL
+                : req.body.server;
+        let targetUrl;
+
+        try {
+
+            targetUrl = buildScanInsertUrl(
+                scanServer,
+                identifierKey
+            );
+
+        }
+        catch (error) {
+
+            return res
+                .status(400)
+                .json({ error: error.message });
+
+        }
+
+        if (
+            !Number.isInteger(identifierValue) ||
+            identifierValue <= 0
+        ) {
+            return res
+                .status(400)
+                .json({
+                    error: `${identifierKey} must be a positive integer.`
+                });
+        }
+
+        if (scanInProgress) {
+            return res
+                .status(409)
+                .json({ error: "A scan is already in progress." });
+        }
+
+        scanInProgress = true;
+
+        try {
+
+            const filename = `ID_${Date.now()}.png`;
+
+            filePath = path.join(
+                TEMP_FOLDER,
+                filename
+            );
+
+            console.log("==================================");
+            console.log("Starting scanner");
+            console.log(`${identifierKey} :`, identifierValue);
+            console.log("Upload URL :", targetUrl);
+            console.log("==================================");
+
+            await scanDocumentToPng(filePath);
+
+            const uploadResponse =
+                await uploadScannedImage(
+                    filePath,
+                    targetUrl,
+                    identifierKey,
+                    identifierValue
+                );
+
+            if (
+                uploadResponse.status < 200 ||
+                uploadResponse.status >= 300 ||
+                !uploadResponse.data ||
+                uploadResponse.data.status !== "SUCCESS"
+            ) {
+                console.log(
+                    "Insert endpoint rejected scanned image :",
+                    uploadResponse.status,
+                    uploadResponse.data
+                );
+
+                return res
+                    .status(502)
+                    .json({
+                        error: "Scanned image was rejected by the insert endpoint.",
+                        insert_status: uploadResponse.status,
+                        insert_message:
+                            uploadResponse.data &&
+                            uploadResponse.data.message,
+                        insert_response: uploadResponse.data
+                    });
+            }
+
+            res.status(201).json({
+                message: "Scanned image sent successfully.",
+                filename,
+                insert_status: uploadResponse.status,
+                insert_file_name:
+                    uploadResponse.data.file_name
+            });
+
+        }
+        catch (error) {
+
+            console.log(
+                "Scan and insert error :",
+                error.message
+            );
+
+            res
+                .status(500)
+                .json({
+                    error: "Scanning or image upload failed."
+                });
+
+        }
+        finally {
+
+            scanInProgress = false;
+
+            if (filePath && fs.existsSync(filePath)) {
+                fs.unlink(filePath, (error) => {
+                    if (error) {
+                        console.log(
+                            "Scan temp file delete error :",
+                            error.message
+                        );
+                    }
+                });
+            }
 
         }
 
