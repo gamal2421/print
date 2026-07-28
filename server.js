@@ -1,4 +1,4 @@
-    const express = require("express");
+const express = require("express");
     const axios = require("axios");
     const cors = require("cors");
     const fs = require("fs");
@@ -16,8 +16,7 @@
     app.use(express.json());
 
     const PORT = 9999;
-    const SCAN_UPLOAD_BASE_URL =
-        "http://192.168.155.57:8080/ords/himu/scanner/";
+    var SCAN_UPLOAD_BASE_URL ;
     const execFileAsync = promisify(execFile);
 
     const REPORT_PRINTERS = {
@@ -257,6 +256,7 @@
 
             const printerName =
                 REPORT_PRINTERS[reportType] ||
+                reportType ||
                 queryParams.printer ||
                 queryParams.printer_name;
 
@@ -774,6 +774,12 @@
 
     });
 
+
+    // ================================
+    // health
+    // ================================
+
+    app.get("/health", (req, res) => { res.status(200).send("OK"); });
 
     // ================================
     // SHOW PRINTERS
