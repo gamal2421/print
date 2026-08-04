@@ -6,7 +6,8 @@
     "bin": "server.js",
     "scripts": {
         "start": "node server.js",
-        "dev": "node --watch server.js"
+        "dev": "node --watch server.js",
+        "test": "jest"
     },
     "license": "MIT",
     "dependencies": {
@@ -23,6 +24,8 @@
         "outputPath": "build"
     },
     "devDependencies": {
+        "jest": "^29.7.0",
+        "supertest": "^6.4.0",
         "pkg": "^5.8.1"
     }
 }
