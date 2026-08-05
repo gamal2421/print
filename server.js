@@ -24,6 +24,39 @@ const express = require("express");
 
     let scanInProgress = false;
     const PRINTER_SELECTION_CANCELLED = "Printer selection was canceled.";
+    const PRINTER_NOT_FOUND = "Printer not found.";
+
+    function normalizePrinterName(printerName) {
+        return String(printerName || "").trim().toLowerCase();
+    }
+
+    async function validatePrinterExists(printerName) {
+        if (!printerName) {
+            return;
+        }
+
+        const printers = await getPrinters();
+        const printerNames = Array.isArray(printers)
+            ? printers
+                .map((printer) => {
+                    if (printer && typeof printer === "object" && printer.name) {
+                        return printer.name;
+                    }
+
+                    return printer;
+                })
+                .filter((name) => typeof name === "string")
+            : [];
+
+        const normalizedRequested = normalizePrinterName(printerName);
+        const found = printerNames.some(
+            (name) => normalizePrinterName(name) === normalizedRequested
+        );
+
+        if (!found) {
+            throw new Error(`Printer "${printerName}" not found.`);
+        }
+    }
 
 
     // ================================
@@ -515,7 +548,7 @@ public sealed class ImagePrinter : IDisposable {
                 queryParams.printer_name;
 
             const printerName = await choosePrinter(requestedPrinter);
-
+            await validatePrinterExists(printerName);
 
             delete queryParams.server;
             delete queryParams.report_path;
@@ -674,94 +707,12 @@ public sealed class ImagePrinter : IDisposable {
                 printOptions
             );
 
-    // START PRINTING IN BACKGROUND
-
-    print(filePath, printOptions)
-
-    .then(() => {
-
-        console.log(
-            "Printed successfully."
-        );
-
-
- 
-        setTimeout(() => {
-
-            fs.unlink(
-                filePath,
-                (err) => {
-
-                    if (err) {
-
-                        console.log(
-                            "Delete Error :",
-                            err.message
-                        );
-
-                    }
-                    else {
-
-                        console.log(
-                            "Temp file deleted."
-                        );
-
-                    }
-
-                }
-            );
-
-        }, 60000);
-
-    })
-
-    .catch((err) => {
-
-        console.log(
-            "Printing Error :",
-            err && err.message
-                ? err.message
-                : err
-        );
-
-
-        fs.unlink(
-            filePath,
-            (deleteError) => {
-
-                if (deleteError) {
-
-                    console.log(
-                        "Delete Error :",
-                        deleteError.message
-                    );
-
-                }
-                else {
-
-                    console.log(
-                        "Temp file deleted after print failure."
-                    );
-
-                }
-
-            }
-        );
-
-    });
-
-
-            // ================================
-            // CREATE HTML VIEW
-            // ================================
-
             const pdfBase64 =
                 Buffer
                     .from(response.data)
                     .toString("base64");
 
-
-            res.send(`
+            const html = `
 
     <!DOCTYPE html>
 
@@ -803,7 +754,40 @@ public sealed class ImagePrinter : IDisposable {
 
     </html>
 
-            `);
+            `;
+
+            res.send(html);
+
+            print(filePath, printOptions)
+                .then(() => {
+                    console.log("Printed successfully.");
+                })
+                .catch((err) => {
+                    console.log(
+                        "Printing Error :",
+                        err && err.message ? err.message : err
+                    );
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        if (filePath && fs.existsSync(filePath)) {
+                            fs.unlink(filePath, (err) => {
+                                if (err) {
+                                    console.log(
+                                        "Delete Error :",
+                                        err.message
+                                    );
+                                } else {
+                                    console.log(
+                                        "Temp file deleted."
+                                    );
+                                }
+                            });
+                        }
+                    }, 60000);
+                });
+
+            return;
 
 
             // ================================
@@ -875,6 +859,7 @@ public sealed class ImagePrinter : IDisposable {
                 payload.printer || payload.printer_name || query.printer || query.printer_name;
 
             const printerName = await choosePrinter(requestedPrinter);
+            await validatePrinterExists(printerName);
 
             let buffer;
             let contentType;
@@ -1003,11 +988,18 @@ public sealed class ImagePrinter : IDisposable {
                     : error
             );
 
-            res.status(
-                error && error.message === PRINTER_SELECTION_CANCELLED ? 409 : 500
-            ).json({
-                error: "Image printing failed.",
-                details: error && error.message ? error.message : error
+            const message =
+                error && error.message
+                    ? error.message
+                    : "Unknown printing error.";
+
+            const notFound = message.includes("not found");
+            const status =
+                message === PRINTER_SELECTION_CANCELLED ? 409 : notFound ? 404 : 500;
+
+            res.status(status).json({
+                error: notFound ? message : "Image printing failed.",
+                details: message
             });
 
         }
