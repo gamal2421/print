@@ -5,10 +5,7 @@ const express = require("express");
     const path = require("path");
     const { execFile } = require("child_process");
     const { promisify } = require("util");
-    const {
-        print,
-        getPrinters
-    } = require("pdf-to-printer");
+    const { print } = require("pdf-to-printer");
 
     const app = express();
     app.use(cors());
@@ -23,11 +20,69 @@ const express = require("express");
     };
 
     let scanInProgress = false;
+    const printQueue = [];
+    let printQueueRunning = false;
     const PRINTER_SELECTION_CANCELLED = "Printer selection was canceled.";
     const PRINTER_NOT_FOUND = "Printer not found.";
 
+    function enqueuePrintJob(jobName, printOperation) {
+        return new Promise((resolve, reject) => {
+            printQueue.push({ jobName, printOperation, resolve, reject });
+            console.log(`[print-queue] queued: ${jobName}; waiting: ${printQueue.length}`);
+            processPrintQueue();
+        });
+    }
+
+    async function processPrintQueue() {
+        if (printQueueRunning) {
+            return;
+        }
+
+        printQueueRunning = true;
+
+        try {
+            while (printQueue.length > 0) {
+                const job = printQueue.shift();
+                console.log(`[print-queue] started: ${job.jobName}`);
+
+                try {
+                    const result = await job.printOperation();
+                    console.log(`[print-queue] finished: ${job.jobName}`);
+                    job.resolve(result);
+                }
+                catch (error) {
+                    console.log(`[print-queue] failed: ${job.jobName}`, error.message || error);
+                    job.reject(error);
+                }
+            }
+        }
+        finally {
+            printQueueRunning = false;
+
+            if (printQueue.length > 0) {
+                processPrintQueue();
+            }
+        }
+    }
+
     function normalizePrinterName(printerName) {
         return String(printerName || "").trim().toLowerCase();
+    }
+
+    async function getWindowsPrinters() {
+        const script = "@(Get-Printer | Select-Object Name, DriverName) | ConvertTo-Json -Compress";
+        const { stdout } = await execFileAsync(
+            "powershell.exe",
+            ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+            { maxBuffer: 1024 * 1024 }
+        );
+
+        if (!stdout.trim()) {
+            return [];
+        }
+
+        const printers = JSON.parse(stdout);
+        return Array.isArray(printers) ? printers : [printers];
     }
 
     async function validatePrinterExists(printerName) {
@@ -35,18 +90,10 @@ const express = require("express");
             return;
         }
 
-        const printers = await getPrinters();
-        const printerNames = Array.isArray(printers)
-            ? printers
-                .map((printer) => {
-                    if (printer && typeof printer === "object" && printer.name) {
-                        return printer.name;
-                    }
-
-                    return printer;
-                })
-                .filter((name) => typeof name === "string")
-            : [];
+        const printers = await getWindowsPrinters();
+        const printerNames = printers
+            .map((printer) => printer && printer.Name)
+            .filter((name) => typeof name === "string");
 
         const normalizedRequested = normalizePrinterName(printerName);
         const found = printerNames.some(
@@ -209,14 +256,9 @@ public sealed class ImagePrinter : IDisposable {
 
     private void PrintPage(object sender, PrintPageEventArgs eventArgs) {
         Rectangle bounds = eventArgs.MarginBounds;
-        float ratio = Math.Min((float)bounds.Width / image.Width, (float)bounds.Height / image.Height);
-        int width = Math.Max(1, (int)(image.Width * ratio));
-        int height = Math.Max(1, (int)(image.Height * ratio));
-        int x = bounds.X + (bounds.Width - width) / 2;
-        int y = bounds.Y + (bounds.Height - height) / 2;
 
         eventArgs.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        eventArgs.Graphics.DrawImage(image, new Rectangle(x, y, width, height));
+        eventArgs.Graphics.DrawImageUnscaled(image, bounds.X, bounds.Y);
         eventArgs.HasMorePages = false;
     }
 
@@ -322,6 +364,7 @@ public sealed class ImagePrinter : IDisposable {
 
     }
 
+    
 
     async function uploadScannedImage(
         filePath,
@@ -712,80 +755,34 @@ public sealed class ImagePrinter : IDisposable {
                     .from(response.data)
                     .toString("base64");
 
-            const html = `
+          
 
-    <!DOCTYPE html>
-
-    <html>
-
-    <head>
-
-    <title>Report View</title>
-
-    <style>
-
-    html,body{
-
-    margin:0;
-    height:100%;
-    overflow:hidden;
-
-    }
-
-    iframe{
-
-    width:100%;
-    height:100%;
-    border:none;
-
-    }
-
-    </style>
-
-    </head>
-
-    <body>
-
-    <iframe
-    src="data:application/pdf;base64,${pdfBase64}">
-    </iframe>
-
-    </body>
-
-    </html>
-
-            `;
-
-            res.send(html);
-
-            print(filePath, printOptions)
-                .then(() => {
-                    console.log("Printed successfully.");
-                })
-                .catch((err) => {
-                    console.log(
-                        "Printing Error :",
-                        err && err.message ? err.message : err
-                    );
-                })
-                .finally(() => {
-                    setTimeout(() => {
-                        if (filePath && fs.existsSync(filePath)) {
-                            fs.unlink(filePath, (err) => {
-                                if (err) {
-                                    console.log(
-                                        "Delete Error :",
-                                        err.message
-                                    );
-                                } else {
-                                    console.log(
-                                        "Temp file deleted."
-                                    );
-                                }
-                            });
-                        }
-                    }, 60000);
-                });
+ 
+            try {
+                await enqueuePrintJob(
+                    `report-${filename}`,
+                    () => print(filePath, printOptions)
+                );
+                console.log("Printed successfully.");
+            }
+            finally {
+                setTimeout(() => {
+                    if (filePath && fs.existsSync(filePath)) {
+                        fs.unlink(filePath, (err) => {
+                            if (err) {
+                                console.log(
+                                    "Delete Error :",
+                                    err.message
+                                );
+                            } else {
+                                console.log(
+                                    "Temp file deleted."
+                                );
+                            }
+                        });
+                    }
+                }, 60000);
+            }
 
             return;
 
@@ -962,7 +959,10 @@ public sealed class ImagePrinter : IDisposable {
                 printer: printerName || "(default)"
             });
 
-            await printImageFile(filePath, printerName);
+            await enqueuePrintJob(
+                requestId,
+                () => printImageFile(filePath, printerName)
+            );
             printJobSent = true;
 
             console.log(`[${requestId}] Print job sent successfully`, {
@@ -1221,7 +1221,7 @@ app.get(
         async (req, res) => {
 
             const printers =
-                await getPrinters();
+                await getWindowsPrinters();
 
             res.json(printers);
 
