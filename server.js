@@ -3,12 +3,119 @@ const express = require("express");
     const cors = require("cors");
     const fs = require("fs");
     const path = require("path");
+    const os = require("os");
     const { execFile } = require("child_process");
-    const { promisify } = require("util");
+    const { promisify, inspect } = require("util");
     const { print } = require("pdf-to-printer");
+
+    const LOG_FOLDER = path.join(process.cwd(), "logs");
+    const LOG_FILE = path.join(LOG_FOLDER, "print-server.log");
+    fs.mkdirSync(LOG_FOLDER, { recursive: true });
+
+    const originalConsole = {
+        log: console.log.bind(console),
+        info: console.info.bind(console),
+        warn: console.warn.bind(console),
+        error: console.error.bind(console)
+    };
+
+    function formatLogValue(value) {
+        if (value instanceof Error) {
+            return value.stack || value.message;
+        }
+
+        if (typeof value === "string") {
+            return value;
+        }
+
+        try {
+            return JSON.stringify(value);
+        }
+        catch (error) {
+            return String(value);
+        }
+    }
+
+    function formatConsoleValue(value) {
+        if (value instanceof Error) {
+            return value.stack || value.message;
+        }
+
+        if (typeof value === "string") {
+            return value;
+        }
+
+        return inspect(value, {
+            colors: false,
+            depth: 5,
+            compact: true,
+            breakLength: Infinity
+        });
+    }
+
+    function writeLog(level, values) {
+        const timestamp = new Date().toISOString();
+        const message = values.map(formatLogValue).join(" ");
+        const entry = JSON.stringify({
+            timestamp,
+            level,
+            pid: process.pid,
+            message
+        }) + os.EOL;
+
+        try {
+            fs.appendFileSync(LOG_FILE, entry, "utf8");
+        }
+        catch (error) {
+            originalConsole.error("Unable to write log file:", error.message || error);
+        }
+
+        originalConsole[level](
+            `${timestamp} [${level.toUpperCase()}] ${values.map(formatConsoleValue).join(" ")}`
+        );
+    }
+
+    console.log = (...values) => writeLog("log", values);
+    console.info = (...values) => writeLog("info", values);
+    console.warn = (...values) => writeLog("warn", values);
+    console.error = (...values) => writeLog("error", values);
+
+    process.on("uncaughtException", (error) => {
+        console.error("Uncaught exception:", error);
+    });
+
+    process.on("unhandledRejection", (reason) => {
+        console.error("Unhandled promise rejection:", reason);
+    });
 
     const app = express();
     app.use(cors());
+    app.use((req, res, next) => {
+        const requestId = req.headers["x-request-id"] ||
+            `request-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+        const startedAt = Date.now();
+        const requestPath = req.originalUrl.split("?")[0];
+
+        res.setHeader("x-request-id", requestId);
+        console.info("HTTP request started", {
+            requestId,
+            method: req.method,
+            path: requestPath,
+            remoteAddress: req.ip
+        });
+
+        res.on("finish", () => {
+            console.info("HTTP request finished", {
+                requestId,
+                method: req.method,
+                path: requestPath,
+                statusCode: res.statusCode,
+                durationMs: Date.now() - startedAt
+            });
+        });
+
+        next();
+    });
     app.use(express.json());
 
     const PORT = 9999;
@@ -784,7 +891,12 @@ public sealed class ImagePrinter : IDisposable {
                 }, 60000);
             }
 
-            return;
+            return res.status(200).json({
+                success: true,
+                message: "Report print job sent successfully.",
+                file: filename,
+                printer: printerName || "(default)"
+            });
 
 
             // ================================
