@@ -3,119 +3,12 @@ const express = require("express");
     const cors = require("cors");
     const fs = require("fs");
     const path = require("path");
-    const os = require("os");
     const { execFile } = require("child_process");
-    const { promisify, inspect } = require("util");
+    const { promisify } = require("util");
     const { print } = require("pdf-to-printer");
-
-    const LOG_FOLDER = path.join(process.cwd(), "logs");
-    const LOG_FILE = path.join(LOG_FOLDER, "print-server.log");
-    fs.mkdirSync(LOG_FOLDER, { recursive: true });
-
-    const originalConsole = {
-        log: console.log.bind(console),
-        info: console.info.bind(console),
-        warn: console.warn.bind(console),
-        error: console.error.bind(console)
-    };
-
-    function formatLogValue(value) {
-        if (value instanceof Error) {
-            return value.stack || value.message;
-        }
-
-        if (typeof value === "string") {
-            return value;
-        }
-
-        try {
-            return JSON.stringify(value);
-        }
-        catch (error) {
-            return String(value);
-        }
-    }
-
-    function formatConsoleValue(value) {
-        if (value instanceof Error) {
-            return value.stack || value.message;
-        }
-
-        if (typeof value === "string") {
-            return value;
-        }
-
-        return inspect(value, {
-            colors: false,
-            depth: 5,
-            compact: true,
-            breakLength: Infinity
-        });
-    }
-
-    function writeLog(level, values) {
-        const timestamp = new Date().toISOString();
-        const message = values.map(formatLogValue).join(" ");
-        const entry = JSON.stringify({
-            timestamp,
-            level,
-            pid: process.pid,
-            message
-        }) + os.EOL;
-
-        try {
-            fs.appendFileSync(LOG_FILE, entry, "utf8");
-        }
-        catch (error) {
-            originalConsole.error("Unable to write log file:", error.message || error);
-        }
-
-        originalConsole[level](
-            `${timestamp} [${level.toUpperCase()}] ${values.map(formatConsoleValue).join(" ")}`
-        );
-    }
-
-    console.log = (...values) => writeLog("log", values);
-    console.info = (...values) => writeLog("info", values);
-    console.warn = (...values) => writeLog("warn", values);
-    console.error = (...values) => writeLog("error", values);
-
-    process.on("uncaughtException", (error) => {
-        console.error("Uncaught exception:", error);
-    });
-
-    process.on("unhandledRejection", (reason) => {
-        console.error("Unhandled promise rejection:", reason);
-    });
 
     const app = express();
     app.use(cors());
-    app.use((req, res, next) => {
-        const requestId = req.headers["x-request-id"] ||
-            `request-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-        const startedAt = Date.now();
-        const requestPath = req.originalUrl.split("?")[0];
-
-        res.setHeader("x-request-id", requestId);
-        console.info("HTTP request started", {
-            requestId,
-            method: req.method,
-            path: requestPath,
-            remoteAddress: req.ip
-        });
-
-        res.on("finish", () => {
-            console.info("HTTP request finished", {
-                requestId,
-                method: req.method,
-                path: requestPath,
-                statusCode: res.statusCode,
-                durationMs: Date.now() - startedAt
-            });
-        });
-
-        next();
-    });
     app.use(express.json());
 
     const PORT = 9999;
@@ -355,17 +248,30 @@ public sealed class ImagePrinter : IDisposable {
         image = Image.FromFile(filePath);
         document = new PrintDocument();
         document.DocumentName = "ZAHA Image Print";
+        document.OriginAtMargins = false;
+
         if (!String.IsNullOrWhiteSpace(printerName)) {
             document.PrinterSettings.PrinterName = printerName;
         }
+
+        document.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
+
         document.PrintPage += PrintPage;
     }
 
     private void PrintPage(object sender, PrintPageEventArgs eventArgs) {
-        Rectangle bounds = eventArgs.MarginBounds;
+        eventArgs.Graphics.PageUnit = GraphicsUnit.Pixel;
 
-        eventArgs.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        eventArgs.Graphics.DrawImageUnscaled(image, bounds.X, bounds.Y);
+        Rectangle destRect = new Rectangle(
+            0,
+            0,
+            image.Width,
+            image.Height
+        );
+
+        eventArgs.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+        eventArgs.Graphics.DrawImage(image, destRect);
+
         eventArgs.HasMorePages = false;
     }
 
@@ -382,49 +288,48 @@ public sealed class ImagePrinter : IDisposable {
 }
 '@
 [ImagePrinter]::Print('${safeFilePath}', '${safePrinter}')
-        `;
+    `;
 
-        await execFileAsync(
-            "powershell.exe",
-            ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
-            {
-                maxBuffer: 1024 * 1024
-            }
+    await execFileAsync(
+        "powershell.exe",
+        ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+        {
+            maxBuffer: 1024 * 1024
+        }
+    );
+}
+
+async function printImageFile(filePath, printerName) {
+    try {
+        await printImageWithPowerShell(filePath, printerName);
+    }
+    catch (error) {
+        console.log(
+            "PowerShell image print failed; retrying with Paint :",
+            error && error.message ? error.message : error
         );
-    }
 
-    async function printImageFile(filePath, printerName) {
         try {
-            await printImageWithPowerShell(filePath, printerName);
+            return await printImageWithPaint(filePath, printerName);
         }
-        catch (error) {
-            console.log(
-                "PowerShell image print failed; retrying with Paint :",
-                error && error.message ? error.message : error
+        catch (paintError) {
+            const powerShellError = error && error.message ? error.message : error;
+            const paintMessage =
+                paintError && paintError.message ? paintError.message : paintError;
+
+            throw new Error(
+                `PowerShell renderer failed: ${powerShellError}. ` +
+                `Paint fallback failed: ${paintMessage}`
             );
-
-            try {
-                return await printImageWithPaint(filePath, printerName);
-            }
-            catch (paintError) {
-                const powerShellError = error && error.message ? error.message : error;
-                const paintMessage =
-                    paintError && paintError.message ? paintError.message : paintError;
-
-                throw new Error(
-                    `PowerShell renderer failed: ${powerShellError}. ` +
-                    `Paint fallback failed: ${paintMessage}`
-                );
-            }
         }
     }
+}
 
+// ================================
+// SCAN TO PNG
+// ================================
 
-    // ================================
-    // SCAN TO PNG
-    // ================================
-
-    const WIA_SCAN_SCRIPT = `
+const WIA_SCAN_SCRIPT = `
         $ErrorActionPreference = "Stop"
         $outputPath = [Environment]::GetEnvironmentVariable("SCAN_OUTPUT_PATH")
 
@@ -891,12 +796,7 @@ public sealed class ImagePrinter : IDisposable {
                 }, 60000);
             }
 
-            return res.status(200).json({
-                success: true,
-                message: "Report print job sent successfully.",
-                file: filename,
-                printer: printerName || "(default)"
-            });
+            return;
 
 
             // ================================
