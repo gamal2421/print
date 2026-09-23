@@ -16,3 +16,70 @@
 {"timestamp":"2026-09-16T10:18:40.384Z","level":"info","pid":18220,"message":"HTTP request finished {\"requestId\":\"request-1789553919269-7ed1ec\",\"method\":\"GET\",\"path\":\"/printers\",\"statusCode\":200,\"durationMs\":1115}"}
 {"timestamp":"2026-09-16T10:18:40.387Z","level":"info","pid":18220,"message":"HTTP request started {\"requestId\":\"request-1789553920387-189df5\",\"method\":\"GET\",\"path\":\"/printers\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
 {"timestamp":"2026-09-16T10:18:41.376Z","level":"info","pid":18220,"message":"HTTP request finished {\"requestId\":\"request-1789553920387-189df5\",\"method\":\"GET\",\"path\":\"/printers\",\"statusCode\":304,\"durationMs\":989}"}
+{"timestamp":"2026-09-20T07:38:07.660Z","level":"log","pid":11332,"message":"Print server running on port 9999"}
+{"timestamp":"2026-09-20T10:51:08.236Z","level":"info","pid":11332,"message":"HTTP request started {\"requestId\":\"request-1789901468235-2b44df\",\"method\":\"GET\",\"path\":\"/health\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T10:51:08.250Z","level":"info","pid":11332,"message":"HTTP request finished {\"requestId\":\"request-1789901468235-2b44df\",\"method\":\"GET\",\"path\":\"/health\",\"statusCode\":200,\"durationMs\":14}"}
+{"timestamp":"2026-09-20T10:51:08.263Z","level":"info","pid":11332,"message":"HTTP request started {\"requestId\":\"request-1789901468263-f0f7ae\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T10:51:08.280Z","level":"log","pid":11332,"message":"=================================="}
+{"timestamp":"2026-09-20T10:51:08.281Z","level":"log","pid":11332,"message":"Starting scanner"}
+{"timestamp":"2026-09-20T10:51:08.281Z","level":"log","pid":11332,"message":"document_id : 2"}
+{"timestamp":"2026-09-20T10:51:08.282Z","level":"log","pid":11332,"message":"Upload URL : http://192.168.155.57:8080/ords/himu/scanner/document"}
+{"timestamp":"2026-09-20T10:51:08.283Z","level":"log","pid":11332,"message":"=================================="}
+{"timestamp":"2026-09-20T10:51:13.326Z","level":"log","pid":11332,"message":"Scan and insert error : Command failed: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -Command \n        $ErrorActionPreference = \"Stop\"\n        $outputPath = [Environment]::GetEnvironmentVariable(\"SCAN_OUTPUT_PATH\")\n\n        if ([string]::IsNullOrWhiteSpace($outputPath)) {\n            throw \"SCAN_OUTPUT_PATH is required.\"\n        }\n\n        $pngFormat = \"{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}\"\n        $dialog = New-Object -ComObject WIA.CommonDialog\n        $image = $dialog.ShowAcquireImage(1, 1, 0, $pngFormat, $true, $true, $true)\n\n        if ($null -eq $image) {\n            throw \"Scan canceled.\"\n        }\n\n        $image.SaveFile($outputPath)\n    \nUser Cancelled.\r\nAt line:11 char:9\r\n+         $image = $dialog.ShowAcquireImage(1, 1, 0, $pngFormat, $true, ...\r\n+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : OperationStopped: (:) [], COMException\r\n    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException\r\n \r\n"}
+{"timestamp":"2026-09-20T10:51:13.329Z","level":"info","pid":11332,"message":"HTTP request finished {\"requestId\":\"request-1789901468263-f0f7ae\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"statusCode\":500,\"durationMs\":5066}"}
+{"timestamp":"2026-09-20T10:52:58.393Z","level":"info","pid":11332,"message":"HTTP request started {\"requestId\":\"request-1789901578393-d30be2\",\"method\":\"GET\",\"path\":\"/health\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T10:52:58.395Z","level":"info","pid":11332,"message":"HTTP request finished {\"requestId\":\"request-1789901578393-d30be2\",\"method\":\"GET\",\"path\":\"/health\",\"statusCode\":304,\"durationMs\":2}"}
+{"timestamp":"2026-09-20T10:52:58.410Z","level":"info","pid":11332,"message":"HTTP request started {\"requestId\":\"request-1789901578410-d062d1\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T10:52:58.412Z","level":"log","pid":11332,"message":"=================================="}
+{"timestamp":"2026-09-20T10:52:58.413Z","level":"log","pid":11332,"message":"Starting scanner"}
+{"timestamp":"2026-09-20T10:52:58.414Z","level":"log","pid":11332,"message":"document_id : 2"}
+{"timestamp":"2026-09-20T10:52:58.415Z","level":"log","pid":11332,"message":"Upload URL : http://192.168.155.57:8080/ords/himu/scanner/document"}
+{"timestamp":"2026-09-20T10:52:58.415Z","level":"log","pid":11332,"message":"=================================="}
+{"timestamp":"2026-09-20T10:53:51.720Z","level":"info","pid":11332,"message":"HTTP request finished {\"requestId\":\"request-1789901578410-d062d1\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"statusCode\":201,\"durationMs\":53310}"}
+{"timestamp":"2026-09-20T10:57:20.023Z","level":"info","pid":11332,"message":"HTTP request started {\"requestId\":\"request-1789901840023-d44847\",\"method\":\"GET\",\"path\":\"/health\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T10:57:20.024Z","level":"info","pid":11332,"message":"HTTP request finished {\"requestId\":\"request-1789901840023-d44847\",\"method\":\"GET\",\"path\":\"/health\",\"statusCode\":304,\"durationMs\":1}"}
+{"timestamp":"2026-09-20T10:57:20.029Z","level":"info","pid":11332,"message":"HTTP request started {\"requestId\":\"request-1789901840029-c71eff\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T10:57:20.031Z","level":"log","pid":11332,"message":"=================================="}
+{"timestamp":"2026-09-20T10:57:20.031Z","level":"log","pid":11332,"message":"Starting scanner"}
+{"timestamp":"2026-09-20T10:57:20.032Z","level":"log","pid":11332,"message":"document_id : 1"}
+{"timestamp":"2026-09-20T10:57:20.032Z","level":"log","pid":11332,"message":"Upload URL : http://192.168.155.57:8080/ords/himu/scanner/document"}
+{"timestamp":"2026-09-20T10:57:20.032Z","level":"log","pid":11332,"message":"=================================="}
+{"timestamp":"2026-09-20T10:57:54.205Z","level":"info","pid":11332,"message":"HTTP request finished {\"requestId\":\"request-1789901840029-c71eff\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"statusCode\":201,\"durationMs\":34176}"}
+{"timestamp":"2026-09-20T15:16:29.253Z","level":"log","pid":5580,"message":"Print server running on port 9999"}
+{"timestamp":"2026-09-20T15:16:50.634Z","level":"info","pid":5580,"message":"HTTP request started {\"requestId\":\"request-1789917410633-349acc\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T15:16:50.653Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:16:50.654Z","level":"log","pid":5580,"message":"Starting scanner"}
+{"timestamp":"2026-09-20T15:16:50.655Z","level":"log","pid":5580,"message":"member_id : 42981"}
+{"timestamp":"2026-09-20T15:16:50.657Z","level":"log","pid":5580,"message":"Upload URL : http://192.168.155.57:8080/ords/himu/scanner/member"}
+{"timestamp":"2026-09-20T15:16:50.658Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:17:32.506Z","level":"log","pid":5580,"message":"Insert endpoint rejected scanned image : 200 {\"status\":\"FAILED\",\"step\":\"Saving File\",\"message\":\"ORA-29280: invalid directory object\"}"}
+{"timestamp":"2026-09-20T15:17:32.508Z","level":"info","pid":5580,"message":"HTTP request finished {\"requestId\":\"request-1789917410633-349acc\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"statusCode\":502,\"durationMs\":41874}"}
+{"timestamp":"2026-09-20T15:18:34.495Z","level":"info","pid":5580,"message":"HTTP request started {\"requestId\":\"request-1789917514495-cb8440\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T15:18:34.498Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:18:34.498Z","level":"log","pid":5580,"message":"Starting scanner"}
+{"timestamp":"2026-09-20T15:18:34.499Z","level":"log","pid":5580,"message":"submember_id : 87392"}
+{"timestamp":"2026-09-20T15:18:34.499Z","level":"log","pid":5580,"message":"Upload URL : http://192.168.155.57:8080/ords/himu/scanner/submember"}
+{"timestamp":"2026-09-20T15:18:34.499Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:19:04.515Z","level":"log","pid":5580,"message":"Insert endpoint rejected scanned image : 200 {\"status\":\"FAILED\",\"step\":\"Saving File\",\"message\":\"ORA-29280: invalid directory object\"}"}
+{"timestamp":"2026-09-20T15:19:04.519Z","level":"info","pid":5580,"message":"HTTP request finished {\"requestId\":\"request-1789917514495-cb8440\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"statusCode\":502,\"durationMs\":30024}"}
+{"timestamp":"2026-09-20T15:23:09.191Z","level":"info","pid":5580,"message":"HTTP request started {\"requestId\":\"request-1789917789190-34ee2d\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T15:23:09.201Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:23:09.202Z","level":"log","pid":5580,"message":"Starting scanner"}
+{"timestamp":"2026-09-20T15:23:09.203Z","level":"log","pid":5580,"message":"member_id : 42981"}
+{"timestamp":"2026-09-20T15:23:09.204Z","level":"log","pid":5580,"message":"Upload URL : http://192.168.155.57:8080/ords/himu/scanner/member"}
+{"timestamp":"2026-09-20T15:23:09.206Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:23:41.114Z","level":"info","pid":5580,"message":"HTTP request finished {\"requestId\":\"request-1789917789190-34ee2d\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"statusCode\":201,\"durationMs\":31924}"}
+{"timestamp":"2026-09-20T15:23:55.018Z","level":"info","pid":5580,"message":"HTTP request started {\"requestId\":\"request-1789917835018-b8480c\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T15:23:55.020Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:23:55.020Z","level":"log","pid":5580,"message":"Starting scanner"}
+{"timestamp":"2026-09-20T15:23:55.021Z","level":"log","pid":5580,"message":"submember_id : 87392"}
+{"timestamp":"2026-09-20T15:23:55.021Z","level":"log","pid":5580,"message":"Upload URL : http://192.168.155.57:8080/ords/himu/scanner/submember"}
+{"timestamp":"2026-09-20T15:23:55.022Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:24:42.211Z","level":"info","pid":5580,"message":"HTTP request finished {\"requestId\":\"request-1789917835018-b8480c\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"statusCode\":201,\"durationMs\":47193}"}
+{"timestamp":"2026-09-20T15:36:37.876Z","level":"info","pid":5580,"message":"HTTP request started {\"requestId\":\"request-1789918597875-11437f\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"remoteAddress\":\"::ffff:127.0.0.1\"}"}
+{"timestamp":"2026-09-20T15:36:37.882Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:36:37.882Z","level":"log","pid":5580,"message":"Starting scanner"}
+{"timestamp":"2026-09-20T15:36:37.883Z","level":"log","pid":5580,"message":"member_id : 42981"}
+{"timestamp":"2026-09-20T15:36:37.884Z","level":"log","pid":5580,"message":"Upload URL : http://192.168.155.57:8080/ords/himu/scanner/member"}
+{"timestamp":"2026-09-20T15:36:37.885Z","level":"log","pid":5580,"message":"=================================="}
+{"timestamp":"2026-09-20T15:37:10.424Z","level":"info","pid":5580,"message":"HTTP request finished {\"requestId\":\"request-1789918597875-11437f\",\"method\":\"POST\",\"path\":\"/scan_and_insert\",\"statusCode\":201,\"durationMs\":32549}"}
