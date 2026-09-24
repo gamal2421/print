@@ -773,7 +773,9 @@ const WIA_SCAN_SCRIPT = `
 
 
             const printOptions = {
-                scale: "noscale"
+                win32: [
+                    '-print-settings "noscale"'
+                ]
             };
 
 

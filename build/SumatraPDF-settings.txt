@@ -38,7 +38,7 @@ ZoomLevels = 8.33 12.5 18 25 33.33 50 66.67 75 100 125 150 200 300 400 600 800 1
 ZoomIncrement = 0
 
 PrinterDefaults [
-	PrintScale = shrink
+	PrintScale = noscale
 ]
 ForwardSearch [
 	HighlightOffset = 0
