@@ -5,7 +5,6 @@ const express = require("express");
     const path = require("path");
     const { execFile } = require("child_process");
     const { promisify } = require("util");
-    const { print } = require("pdf-to-printer");
 
     const app = express();
     app.use(cors());
@@ -371,23 +370,52 @@ async function printImageFile(filePath, printerName) {
     }
 }
 
-async function printPdfWithSumatra(filePath, printerName, sumatraPath) {
-    if (!sumatraPath) {
-        throw new Error("SumatraPDF.exe was not found beside the print service.");
+function getPdfToPngPath() {
+    const candidates = [];
+
+    if (process && process.pkg) {
+        candidates.push(
+            path.join(path.dirname(process.execPath), "poppler", "pdftocairo.exe")
+        );
+    }
+
+    candidates.push(
+        path.join(__dirname, "node_modules", "pdf-poppler", "lib", "win", "poppler-0.51", "bin", "pdftocairo.exe")
+    );
+
+    return candidates.find((candidate) => fs.existsSync(candidate));
+}
+
+async function renderPdfFirstPageToPng(pdfPath, outputPrefix) {
+    const pdfToPngPath = getPdfToPngPath();
+
+    if (!pdfToPngPath) {
+        throw new Error("pdftocairo.exe was not found beside the print service.");
     }
 
     await execFileAsync(
-        sumatraPath,
+        pdfToPngPath,
         [
-            "-silent",
-            "-print-to",
-            printerName,
-            "-print-settings",
-            "noscale",
-            filePath
+            "-png",
+            "-f",
+            "1",
+            "-l",
+            "1",
+            "-scale-to",
+            "1800",
+            pdfPath,
+            outputPrefix
         ],
         { maxBuffer: 1024 * 1024 }
     );
+
+    const renderedPath = `${outputPrefix}-1.png`;
+
+    if (!fs.existsSync(renderedPath)) {
+        throw new Error("PDF renderer did not create an image file.");
+    }
+
+    return renderedPath;
 }
 
 // ================================
@@ -614,6 +642,7 @@ const WIA_SCAN_SCRIPT = `
     app.get("/print-report", async (req, res) => {
 
         let filePath;
+        let renderedImagePath;
 
         try {
 
@@ -766,93 +795,42 @@ const WIA_SCAN_SCRIPT = `
 
 
             // ================================
-            // PRINT PDF
+            // RENDER PDF TO PNG AND PRINT IMAGE
             // ================================
 
-            let sumatraPath;
-
-            try {
-
-                if (process && process.pkg) {
-
-                    sumatraPath =
-                        path.join(
-                            path.dirname(process.execPath),
-                            "SumatraPDF.exe"
-                        );
-
-                }
-
-            }
-            catch (e) {
-
-                sumatraPath = undefined;
-
-            }
-
-
-            const printOptions = {
-                win32: [
-                    '-print-settings "noscale"'
-                ]
-            };
-
-
-            if (sumatraPath) {
-
-                printOptions.sumatraPdfPath =
-                    sumatraPath;
-
-            }
-
-
-            if (printerName) {
-
-                printOptions.printer =
-                    printerName;
-
-                console.log(
-                    "Printer override :",
-                    printerName
-                );
-
-            }
-            console.log(
-                "Printing options :",
-                printOptions
+            const renderedPrefix = path.join(
+                TEMP_FOLDER,
+                `report_${Date.now()}`
             );
 
-            const pdfBase64 =
-                Buffer
-                    .from(response.data)
-                    .toString("base64");
+            renderedImagePath =
+                await renderPdfFirstPageToPng(filePath, renderedPrefix);
 
-          
+            console.log(
+                "Rendered report page :",
+                renderedImagePath
+            );
 
- 
             try {
                 await enqueuePrintJob(
                     `report-${filename}`,
-                    () => printPdfWithSumatra(filePath, printerName, sumatraPath)
+                    () => printImageFile(renderedImagePath, printerName)
                 );
                 console.log("Printed successfully.");
             }
             finally {
                 setTimeout(() => {
-                    if (filePath && fs.existsSync(filePath)) {
-                        fs.unlink(filePath, (err) => {
-                            if (err) {
-                                console.log(
-                                    "Delete Error :",
-                                    err.message
-                                );
-                            } else {
-                                console.log(
-                                    "Temp file deleted."
-                                );
-                            }
+                    [filePath, renderedImagePath]
+                        .filter((temporaryPath) => temporaryPath && fs.existsSync(temporaryPath))
+                        .forEach((temporaryPath) => {
+                            fs.unlink(temporaryPath, (err) => {
+                                if (err) {
+                                    console.log("Temp file delete error :", err.message);
+                                } else {
+                                    console.log("Temp file deleted :", temporaryPath);
+                                }
+                            });
                         });
-                    }
                 }, 60000);
             }
 
