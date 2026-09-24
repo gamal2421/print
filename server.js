@@ -773,7 +773,7 @@ const WIA_SCAN_SCRIPT = `
 
 
             const printOptions = {
-                scale: "fit"
+                scale: "noscale"
             };
 
 
