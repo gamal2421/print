@@ -22,6 +22,16 @@ if errorlevel 1 (
     exit /b 1
 )
 
+if exist "%~dp0poppler\" (
+    if not exist "%APP_FOLDER%\poppler" mkdir "%APP_FOLDER%\poppler"
+    xcopy /E /I /Y "%~dp0poppler\*" "%APP_FOLDER%\poppler\" >nul
+    if errorlevel 1 (
+        echo Unable to copy the PDF rendering files.
+        pause
+        exit /b 1
+    )
+)
+
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath 'sc.exe' -ArgumentList 'config stisvc start= auto' -Verb RunAs -Wait -PassThru; exit $p.ExitCode"
 if errorlevel 1 (
     echo Unable to enable the Windows Image Acquisition service.

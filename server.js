@@ -274,6 +274,7 @@ public sealed class ImagePrinter : IDisposable {
             document.PrinterSettings.PrinterName = printerName;
         }
 
+        document.DefaultPageSettings.PaperSize = new PaperSize("ISO ID-1", 338, 213);
         document.DefaultPageSettings.Landscape = true;
         document.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
 
@@ -361,26 +362,25 @@ public sealed class ImagePrinter : IDisposable {
 
 async function printImageFile(filePath, printerName) {
     try {
-        await printImageWithPaint(filePath, printerName);
-        console.log("[print-debug] Windows Paint renderer completed");
+        await printImageWithPowerShell(filePath, printerName);
     }
     catch (error) {
         console.log(
-            "Windows Paint image print failed; retrying with PowerShell :",
+            "PowerShell image print failed; retrying with Paint :",
             error && error.message ? error.message : error
         );
 
         try {
-            return await printImageWithPowerShell(filePath, printerName);
+            return await printImageWithPaint(filePath, printerName);
         }
         catch (paintError) {
-            const paintErrorMessage = error && error.message ? error.message : error;
+            const powerShellError = error && error.message ? error.message : error;
             const paintMessage =
                 paintError && paintError.message ? paintError.message : paintError;
 
             throw new Error(
-                `Paint renderer failed: ${paintErrorMessage}. ` +
-                `PowerShell fallback failed: ${paintMessage}`
+                `PowerShell renderer failed: ${powerShellError}. ` +
+                `Paint fallback failed: ${paintMessage}`
             );
         }
     }
