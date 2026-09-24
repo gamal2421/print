@@ -274,6 +274,7 @@ public sealed class ImagePrinter : IDisposable {
             document.PrinterSettings.PrinterName = printerName;
         }
 
+        document.DefaultPageSettings.Landscape = true;
         document.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
 
         document.PrintPage += PrintPage;
