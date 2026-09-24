@@ -371,6 +371,25 @@ async function printImageFile(filePath, printerName) {
     }
 }
 
+async function printPdfWithSumatra(filePath, printerName, sumatraPath) {
+    if (!sumatraPath) {
+        throw new Error("SumatraPDF.exe was not found beside the print service.");
+    }
+
+    await execFileAsync(
+        sumatraPath,
+        [
+            "-silent",
+            "-print-to",
+            printerName,
+            "-print-settings",
+            "noscale",
+            filePath
+        ],
+        { maxBuffer: 1024 * 1024 }
+    );
+}
+
 // ================================
 // SCAN TO PNG
 // ================================
@@ -814,7 +833,7 @@ const WIA_SCAN_SCRIPT = `
             try {
                 await enqueuePrintJob(
                     `report-${filename}`,
-                    () => print(filePath, printOptions)
+                    () => printPdfWithSumatra(filePath, printerName, sumatraPath)
                 );
                 console.log("Printed successfully.");
             }
