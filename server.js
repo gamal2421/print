@@ -416,8 +416,10 @@ async function renderPdfFirstPageToPng(pdfPath, outputPrefix) {
             "1",
             "-l",
             "1",
-            "-scale-to",
+            "-scale-to-x",
             "1800",
+            "-scale-to-y",
+            "1135",
             pdfPath,
             outputPrefix
         ],
