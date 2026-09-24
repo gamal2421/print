@@ -746,7 +746,10 @@ const WIA_SCAN_SCRIPT = `
             }
 
 
-            const printOptions = {};
+            const printOptions = {
+                // Keep the printer driver's default paper/card size and fit the PDF to it.
+                scale: "fit"
+            };
 
 
             if (sumatraPath) {
