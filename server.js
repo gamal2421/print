@@ -361,25 +361,26 @@ public sealed class ImagePrinter : IDisposable {
 
 async function printImageFile(filePath, printerName) {
     try {
-        await printImageWithPowerShell(filePath, printerName);
+        await printImageWithPaint(filePath, printerName);
+        console.log("[print-debug] Windows Paint renderer completed");
     }
     catch (error) {
         console.log(
-            "PowerShell image print failed; retrying with Paint :",
+            "Windows Paint image print failed; retrying with PowerShell :",
             error && error.message ? error.message : error
         );
 
         try {
-            return await printImageWithPaint(filePath, printerName);
+            return await printImageWithPowerShell(filePath, printerName);
         }
         catch (paintError) {
-            const powerShellError = error && error.message ? error.message : error;
+            const paintErrorMessage = error && error.message ? error.message : error;
             const paintMessage =
                 paintError && paintError.message ? paintError.message : paintError;
 
             throw new Error(
-                `PowerShell renderer failed: ${powerShellError}. ` +
-                `Paint fallback failed: ${paintMessage}`
+                `Paint renderer failed: ${paintErrorMessage}. ` +
+                `PowerShell fallback failed: ${paintMessage}`
             );
         }
     }
