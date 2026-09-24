@@ -262,14 +262,25 @@ public sealed class ImagePrinter : IDisposable {
     private void PrintPage(object sender, PrintPageEventArgs eventArgs) {
         eventArgs.Graphics.PageUnit = GraphicsUnit.Pixel;
 
-        Rectangle destRect = new Rectangle(
-            0,
-            0,
-            image.Width,
-            image.Height
+        RectangleF printableArea = eventArgs.Graphics.VisibleClipBounds;
+        float scale = Math.Min(
+            printableArea.Width / image.Width,
+            printableArea.Height / image.Height
         );
 
-        eventArgs.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+        float printWidth = image.Width * scale;
+        float printHeight = image.Height * scale;
+        float printX = printableArea.X + (printableArea.Width - printWidth) / 2;
+        float printY = printableArea.Y + (printableArea.Height - printHeight) / 2;
+
+        RectangleF destRect = new RectangleF(
+            printX,
+            printY,
+            printWidth,
+            printHeight
+        );
+
+        eventArgs.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
         eventArgs.Graphics.DrawImage(image, destRect);
 
         eventArgs.HasMorePages = false;
