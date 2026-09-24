@@ -14,8 +14,7 @@
         "axios": "^1.18.1",
         "cors": "^2.8.6",
         "express": "^4.22.2",
-        "fs-extra": "^11.3.6",
-        "pdf-poppler": "^0.2.3"
+        "fs-extra": "^11.3.6"
     },
     "pkg": {
         "targets": [
