@@ -283,13 +283,22 @@ public sealed class ImagePrinter : IDisposable {
         eventArgs.Graphics.PageUnit = GraphicsUnit.Pixel;
 
         RectangleF printableArea = eventArgs.Graphics.VisibleClipBounds;
+        Image printImage = image;
+        bool rotated = (image.Width > image.Height) !=
+            (printableArea.Width > printableArea.Height);
+
+        if (rotated) {
+            printImage = (Image)image.Clone();
+            printImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
+        }
+
         float scale = Math.Min(
-            printableArea.Width / image.Width,
-            printableArea.Height / image.Height
+            printableArea.Width / printImage.Width,
+            printableArea.Height / printImage.Height
         );
 
-        float printWidth = image.Width * scale;
-        float printHeight = image.Height * scale;
+        float printWidth = printImage.Width * scale;
+        float printHeight = printImage.Height * scale;
         float printX = printableArea.X + (printableArea.Width - printWidth) / 2;
         float printY = printableArea.Y + (printableArea.Height - printHeight) / 2;
 
@@ -307,11 +316,16 @@ public sealed class ImagePrinter : IDisposable {
             "printable=" + eventArgs.PageSettings.PrintableArea.Width + "x" + eventArgs.PageSettings.PrintableArea.Height + "_hundredths_in " +
             "clip=" + printableArea.Width.ToString("F0") + "x" + printableArea.Height.ToString("F0") + "_px " +
             "image=" + image.Width + "x" + image.Height + "_px " +
+            "rotated=" + rotated + " " +
             "destination=" + printWidth.ToString("F0") + "x" + printHeight.ToString("F0") + "_px"
         );
 
         eventArgs.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        eventArgs.Graphics.DrawImage(image, destRect);
+        eventArgs.Graphics.DrawImage(printImage, destRect);
+
+        if (rotated) {
+            printImage.Dispose();
+        }
 
         eventArgs.HasMorePages = false;
     }
