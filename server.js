@@ -82,7 +82,7 @@ const express = require("express");
     }
 
     async function getWindowsPrinterDebug(printerName) {
-        const safePrinterName = String(printerName || "").replace(/'/g, "''");
+        const safePrinterName = String(printerName || "").trim().replace(/'/g, "''");
         const script = `
 $printer = Get-Printer -Name '${safePrinterName}' -ErrorAction Stop
 $configuration = Get-PrintConfiguration -PrinterName '${safePrinterName}'
@@ -191,7 +191,7 @@ $configuration = Get-PrintConfiguration -PrinterName '${safePrinterName}'
     // without showing a dialog.
     async function choosePrinter(printerName) {
         if (printerName) {
-            return printerName;
+            return String(printerName).trim();
         }
 
         const script = `
