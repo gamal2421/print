@@ -15,10 +15,6 @@ const express = require("express");
     var SCAN_UPLOAD_BASE_URL ;
     const execFileAsync = promisify(execFile);
 
-    const REPORT_PRINTERS = {
-        "2": "Microsoft Print to PDF"
-    };
-
     let scanInProgress = false;
     const printQueue = [];
     let printQueueRunning = false;
@@ -83,6 +79,31 @@ const express = require("express");
 
         const printers = JSON.parse(stdout);
         return Array.isArray(printers) ? printers : [printers];
+    }
+
+    async function getWindowsPrinterDebug(printerName) {
+        const safePrinterName = String(printerName || "").replace(/'/g, "''");
+        const script = `
+$printer = Get-Printer -Name '${safePrinterName}' -ErrorAction Stop
+$configuration = Get-PrintConfiguration -PrinterName '${safePrinterName}'
+[PSCustomObject]@{
+    Name = $printer.Name
+    DriverName = $printer.DriverName
+    PortName = $printer.PortName
+    PaperSize = $configuration.PaperSize
+    Orientation = $configuration.Orientation
+    DuplexingMode = $configuration.DuplexingMode
+    Color = $configuration.Color
+} | ConvertTo-Json -Compress
+        `;
+
+        const { stdout } = await execFileAsync(
+            "powershell.exe",
+            ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+            { maxBuffer: 1024 * 1024 }
+        );
+
+        return JSON.parse(stdout);
     }
 
     async function validatePrinterExists(printerName) {
@@ -280,6 +301,16 @@ public sealed class ImagePrinter : IDisposable {
             printHeight
         );
 
+        Console.WriteLine(
+            "PRINT_DEBUG " +
+            "printer=" + document.PrinterSettings.PrinterName + " " +
+            "paper=" + document.DefaultPageSettings.PaperSize.Width + "x" + document.DefaultPageSettings.PaperSize.Height + "_hundredths_in " +
+            "printable=" + eventArgs.PageSettings.PrintableArea.Width + "x" + eventArgs.PageSettings.PrintableArea.Height + "_hundredths_in " +
+            "clip=" + printableArea.Width.ToString("F0") + "x" + printableArea.Height.ToString("F0") + "_px " +
+            "image=" + image.Width + "x" + image.Height + "_px " +
+            "destination=" + printWidth.ToString("F0") + "x" + printHeight.ToString("F0") + "_px"
+        );
+
         eventArgs.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
         eventArgs.Graphics.DrawImage(image, destRect);
 
@@ -301,13 +332,17 @@ public sealed class ImagePrinter : IDisposable {
 [ImagePrinter]::Print('${safeFilePath}', '${safePrinter}')
     `;
 
-    await execFileAsync(
+    const { stdout } = await execFileAsync(
         "powershell.exe",
         ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
         {
             maxBuffer: 1024 * 1024
         }
     );
+
+    if (stdout.trim()) {
+        console.log("[print-debug] PowerShell renderer:", stdout.trim());
+    }
 }
 
 async function printImageFile(filePath, printerName) {
@@ -601,15 +636,7 @@ const WIA_SCAN_SCRIPT = `
             };
 
 
-            const reportType =
-                typeof queryParams.report_type === "string"
-                    ? queryParams.report_type
-                    : undefined;
-
-
             const requestedPrinter =
-                REPORT_PRINTERS[reportType] ||
-                reportType ||
                 queryParams.printer ||
                 queryParams.printer_name;
 
@@ -630,7 +657,6 @@ const WIA_SCAN_SCRIPT = `
             console.log("Generating Report");
             console.log("Server :", server);
             console.log("Report Path :", reportPath);
-            console.log("Report Type :", reportType || "(none)");
             console.log("Parameters :", params);
             console.log(
                 "Selected printer :",
@@ -747,7 +773,6 @@ const WIA_SCAN_SCRIPT = `
 
 
             const printOptions = {
-                // Keep the printer driver's default paper/card size and fit the PDF to it.
                 scale: "fit"
             };
 
@@ -1253,6 +1278,26 @@ app.get(
 
         }
     );
+
+    app.get("/printer-debug", async (req, res) => {
+        try {
+            const printerName = req.query.printer || req.query.printer_name;
+
+            if (!printerName) {
+                return res.status(400).json({
+                    error: "Provide printer or printer_name."
+                });
+            }
+
+            res.json(await getWindowsPrinterDebug(printerName));
+        }
+        catch (error) {
+            res.status(500).json({
+                error: "Unable to read printer configuration.",
+                details: error.message || String(error)
+            });
+        }
+    });
     // ================================
     // START SERVER
     // ================================
