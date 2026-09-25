@@ -148,7 +148,7 @@ $configuration = Get-PrintConfiguration -PrinterName '${safePrinterName}'
         if (mime.includes("png")) {
             return ".png";
         }
-
+ 
         if (mime.includes("jpg") || mime.includes("jpeg")) {
             return ".jpg";
         }
@@ -267,7 +267,11 @@ if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
             throw new Error("SumatraPDF.exe was not found beside the print service.");
         }
 
-        const args = ["-silent"];
+        const args = [
+            "-silent",
+            "-print-settings",
+            "fit"
+        ];
 
         if (printerName) {
             args.push("-print-to", printerName);
