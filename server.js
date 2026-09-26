@@ -253,8 +253,7 @@ if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
             process.pkg
                 ? path.join(path.dirname(process.execPath), "SumatraPDF.exe")
                 : null,
-            path.join(__dirname, "build", "SumatraPDF.exe"),
-            path.join(__dirname, "SumatraPDF.exe")
+            path.join(__dirname, "build", "SumatraPDF.exe")
         ].filter(Boolean);
 
         return candidates.find((candidate) => fs.existsSync(candidate));
@@ -270,7 +269,7 @@ if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
         const args = [
             "-silent",
             "-print-settings",
-            "fit"
+            "paper=85.6mm x 53.98mm,fit"
         ];
 
         if (printerName) {
