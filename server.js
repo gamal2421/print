@@ -248,41 +248,67 @@ if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
         );
     }
 
-    function getSumatraPdfPath() {
-        const candidates = [
+    function getGhostscriptPath() {
+        const configuredPath = process.env.GHOSTSCRIPT_PATH;
+        if (configuredPath && fs.existsSync(configuredPath)) {
+            return configuredPath;
+        }
+
+        const installRoots = [
             process.pkg
-                ? path.join(path.dirname(process.execPath), "SumatraPDF.exe")
+                ? path.join(path.dirname(process.execPath), "ghostscript")
                 : null,
-            path.join(__dirname, "build", "SumatraPDF.exe")
+            path.join(__dirname, "build", "ghostscript"),
+            path.join(process.env.ProgramFiles || "C:\\Program Files", "gs"),
+            path.join(process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)", "gs")
         ].filter(Boolean);
 
-        return candidates.find((candidate) => fs.existsSync(candidate));
+        for (const installRoot of installRoots) {
+            if (!fs.existsSync(installRoot)) {
+                continue;
+            }
+
+            const versions = fs.readdirSync(installRoot, { withFileTypes: true })
+                .filter((entry) => entry.isDirectory())
+                .map((entry) => entry.name)
+                .sort((left, right) => right.localeCompare(left, undefined, { numeric: true }));
+
+            for (const version of versions) {
+                for (const executable of ["gswin64c.exe", "gswin32c.exe"]) {
+                    const candidate = path.join(installRoot, version, "bin", executable);
+                    if (fs.existsSync(candidate)) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     async function printPdfFile(filePath, printerName) {
-        const sumatraPdfPath = getSumatraPdfPath();
+        const ghostscriptPath = getGhostscriptPath();
 
-        if (!sumatraPdfPath) {
-            throw new Error("SumatraPDF.exe was not found beside the print service.");
+        if (!ghostscriptPath) {
+            throw new Error("Ghostscript was not found beside the print service or installed on this computer.");
         }
 
         const args = [
-            "-silent",
-            "-print-settings",
-            "paper=85.6mm x 53.98mm,fit"
+            "-dSAFER",
+            "-dBATCH",
+            "-dNOPAUSE",
+            "-dNoCancel",
+            "-sDEVICE=mswinpr2",
+            `-sOutputFile=%printer%${printerName}`,
+            "-dDEVICEWIDTHPOINTS=243",
+            "-dDEVICEHEIGHTPOINTS=153",
+            "-dFIXEDMEDIA",
+            "-dPDFFitPage",
+            filePath
         ];
 
-        if (printerName) {
-            args.push("-print-to", printerName);
-        }
-        else {
-            args.push("-print-to-default");
-        }
-
-        args.push(filePath);
-
-        await execFileAsync(sumatraPdfPath, args, {
-            maxBuffer: 1024 * 1024
+        await execFileAsync(ghostscriptPath, args, {
+            maxBuffer: 4 * 1024 * 1024
         });
     }
 

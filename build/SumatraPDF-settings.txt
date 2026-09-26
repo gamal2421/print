@@ -112,15 +112,35 @@ Themes [
 # You're not expected to change those manually
 UiLanguage = en
 WindowState = 1
-WindowPos = 561 0 797 1032
+WindowPos = 561 0 800 1032
 FileStates [
+	[
+		FilePath = D:\print\temp\SUB1500_كارنيه العضو.pdf
+		Favorites [
+		]
+		IsPinned = false
+		IsMissing = false
+		OpenCount = 1
+		UseDefaultState = false
+		DisplayMode = continuous
+		ScrollPos = -1 -1
+		PageNo = 1
+		Zoom = fit page
+		Rotation = 270
+		WindowState = 1
+		WindowPos = 561 0 800 1032
+		ShowToc = false
+		SidebarDx = 0
+		DisplayR2L = false
+		ReparseIdx = 0
+	]
 	[
 		FilePath = C:\Users\NTG\OneDrive\Documents\d.pdf
 		Favorites [
 		]
 		IsPinned = false
 		IsMissing = false
-		OpenCount = 2
+		OpenCount = 3
 		UseDefaultState = false
 		DisplayMode = continuous
 		ScrollPos = -1 -1
@@ -128,7 +148,7 @@ FileStates [
 		Zoom = fit page
 		Rotation = 90
 		WindowState = 1
-		WindowPos = 561 0 797 1032
+		WindowPos = 561 0 800 1032
 		ShowToc = false
 		SidebarDx = 0
 		DisplayR2L = false
@@ -136,6 +156,32 @@ FileStates [
 	]
 ]
 SessionData [
+	[
+		TabStates [
+			[
+				FilePath = C:\Users\NTG\OneDrive\Documents\d.pdf
+				DisplayMode = continuous
+				PageNo = 1
+				Zoom = fit page
+				Rotation = 90
+				ScrollPos = -1 -1
+				ShowToc = false
+			]
+			[
+				FilePath = D:\print\temp\SUB1500_كارنيه العضو.pdf
+				DisplayMode = continuous
+				PageNo = 1
+				Zoom = fit page
+				Rotation = 270
+				ScrollPos = -1 -1
+				ShowToc = false
+			]
+		]
+		TabIndex = 3
+		WindowState = 1
+		WindowPos = 561 0 800 1032
+		SidebarDx = 0
+	]
 ]
 TimeOfLastUpdateCheck = 0 0
 OpenCountWeek = 821

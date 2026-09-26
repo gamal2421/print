@@ -22,6 +22,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
+if not exist "%~dp0ghostscript\gs10.08.0\bin\gswin32c.exe" (
+    echo The bundled Ghostscript runtime was not found.
+    pause
+    exit /b 1
+)
+
+if not exist "%APP_FOLDER%\ghostscript" mkdir "%APP_FOLDER%\ghostscript"
+xcopy /E /I /Y "%~dp0ghostscript\*" "%APP_FOLDER%\ghostscript\" >nul
+if errorlevel 1 (
+    echo Unable to copy the Ghostscript runtime.
+    pause
+    exit /b 1
+)
+
 if exist "%~dp0poppler\" (
     if not exist "%APP_FOLDER%\poppler" mkdir "%APP_FOLDER%\poppler"
     xcopy /E /I /Y "%~dp0poppler\*" "%APP_FOLDER%\poppler\" >nul
